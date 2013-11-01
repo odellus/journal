@@ -14,7 +14,7 @@ def check_for_args(args):
     if args.date != None or args.month != None:
         return [args.date, args.month]
     else:
-        return None
+        return [None, None]
 
 def get_timezone():
     """ Description: Uses the Unix program <date> to get the timezone."""
