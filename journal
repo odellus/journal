@@ -1,0 +1,260 @@
+#! /usr/bin/env python
+
+import subprocess, datetime, os, argparse, operator, imp
+from couchdbkit import Server, Document, StringProperty, DateTimeProperty
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-d','--date', help = 'The date of the journal the user wants to see.')
+parser.add_argument('-m','--month', help = 'Display the month, underlining the days there are an entry in the journal.')
+args = parser.parse_args()
+
+def check_for_args(args):
+    """ Description: returns the only argument possible to the journal
+    program: date. Returns none if there are no arguments"""
+    if args.date != None or args.month != None:
+        return [args.date, args.month]
+    else:
+        return None
+
+def get_timezone():
+    """ Description: Uses the Unix program <date> to get the timezone."""
+    #p = subprocess.Popen('date > /tmp/TZ',shell=True)
+    #p.communicate()
+    #fh = open('/tmp/TZ','r')
+    #tz = fh.read().split(' ')[-2]
+    from dateutil.tz import tzlocal
+    import datetime
+
+    return datetime.datetime.now(tzlocal()).tzname()
+    #return tz
+
+def get_author():
+    """ Description: Uses the environmental variables to add user@host
+    as the journal author in the header."""
+    if os.path.exists(os.environ.get('HOME')+'/.twsetup_defaults.py'):
+        defaults = imp.load_source('twsetup_defaults', 
+                                   os.environ.get('HOME')
+                                   +'/.twsetup_defaults.py')
+        if 'JOURNAL_PREHEADER' in dir(defaults):
+            return defaults.JOURNAL_PREHEADER[0]
+        else:
+            print 'JOURNAL_PREHEADER not defined in ~/.twsetup_defaults.py'
+            return os.environ.get('USER')+'@'+os.environ.get('SESSION_MANAGER').split('/')[1].split(':')[0]
+    else:
+        return os.environ.get('USER')+'@'+os.environ.get('SESSION_MANAGER').split('/')[1].split(':')[0]
+
+def add_zero(string):
+    """ Description: """
+    if len(string) < 2:
+        string = '0'+string
+    return string
+
+def create_header_time():
+    u = datetime.datetime.now()
+    uvec = [u.year,u.month,u.day,u.hour,u.minute,u.second]
+    ustrvec = map(str,uvec)
+    uform = map(add_zero,ustrvec)
+
+    tz = get_timezone()
+    ddtime = '-'.join(uform[:3])+' '+':'.join(uform[3:])
+    HEADER = '# Name \t: '+get_author()+'\n# Time \t: '+ddtime+' '+tz+'\n'
+
+    return [HEADER, u]
+
+def first_entry():
+    call_str = "emacs -nw +4 "
+    usr = os.environ.get('USER')
+    file_to_open = "/tmp/"+usr+"_journal_buffer.txt"
+    fh = open(file_to_open,'w')
+    head, t = create_header_time()
+    fh.write(head+'\n\n')
+    fh.close()
+    send_to_subprocess = call_str+file_to_open
+    p = subprocess.Popen( send_to_subprocess, shell=True)
+    p.communicate()
+    
+    fh = open( file_to_open, 'r')
+    journal_content = fh.read()
+    fh.close()
+    return [journal_content,t]
+
+def create_entry( entry ):    
+    call_str = "emacs -nw "
+    usr = os.environ.get('USER')
+    file_to_open = "/tmp/"+usr+"_journal_buffer.txt"
+    fh = open(file_to_open,'w')
+    head, t = create_header_time()
+    fh.write(entry+'\n'+head+'\n')
+    fh.close()
+    # count number of \n character in file with .split('\n')
+    fh = open( file_to_open, 'r' )
+    n_lines = str(len(fh.read().split('\n')))
+    fh.close()
+
+    send_to_subprocess = call_str+'+'+n_lines+' '+file_to_open
+
+    p = subprocess.Popen( send_to_subprocess, shell=True )
+    p.communicate()
+
+    fh = open( file_to_open, 'r' )
+    journal_content = fh.read()
+    fh.close()
+    return [journal_content,t]
+
+def view_old_entry( entry ):
+    usr = os.environ.get('USER')
+    old_buffer = '/tmp/old_'+usr+'_journal_buffer.txt'
+    fh = open(old_buffer,'w')
+    fh.write( entry )
+    fh.close()
+    call_str = 'emacs -nw '
+    send_to_subprocess = call_str+old_buffer
+    p = subprocess.Popen(send_to_subprocess, shell=True)
+    p.communicate()
+
+def clear_buffer():
+    usr = os.environ.get('USER')
+    buff = '/tmp/'+usr+'_journal_buffer.txt'
+    if os.path.exists(buff):
+        os.remove(buff)
+    return 0
+
+class Journal(Document):
+    author = StringProperty()
+    content = StringProperty()
+    date = DateTimeProperty()
+
+def get_couchdb_server():
+    # server object
+    server = Server()
+    # create or get the user's personal journal db
+    db_name = os.environ.get('USER')+'_journal'
+    # create database
+    db = server.get_or_create_db(db_name)
+    # associate Journal to the db
+    Journal.set_db(db)
+    return db
+
+def save_entry_to_db(journal_content, t):
+    db = get_couchdb_server()
+    # create a new journal
+    entry = Journal(
+        author = get_author(),
+        content = journal_content,
+        date = t
+        )
+
+    #save it
+    entry.save()
+    return 0
+
+def check_if_entry_today():
+    db = get_couchdb_server()
+    u = datetime.datetime.now()
+    if len(str(u.month)) < 2:
+        umonthsub = '0'+str(u.month)
+    else:
+        umonthsub = str(u.month)
+    if len(str(u.day)) < 2:
+        udaysub = '0'+str(u.day)
+    else:
+        udaysub = str(u.day)
+    #print umonthsub, udaysub
+    zdate = ''.join(map(str, [u.year,umonthsub,udaysub]))
+    truth_counter = 0
+    todays_entries = []
+    for x in db:
+        udate =  ''.join(db[x['id']]['date'].split('T')[0].split('-'))
+        if udate == zdate:
+            todays_entries.append([db[x['id']]['content'],db[x['id']]['date']])
+            truth_counter += 1
+        sort_today = sorted(todays_entries,
+                            key=operator.itemgetter(1), 
+                            reverse=True)
+    if truth_counter > 0:
+        return [True,sort_today[0][0]]
+    else:
+        return [False,'']
+
+def check_for_entry( date ):
+    db = get_couchdb_server()
+    old_entries = []
+    for x in db:
+        udate = ''.join(db[x['id']]['date'].split('T')[0].split('-'))
+        if date == udate:
+            old_entries.append(( db[x['id']]['content'], db[x['id']]['date'] ))
+    sorted_entries = sorted( old_entries,
+                             key=operator.itemgetter(1), 
+                             reverse=True )
+    if sorted_entries != []:
+        return sorted_entries[0][0]
+    else:
+        return None
+
+def no_args():
+    checker = check_if_entry_today()
+    #print "Going through the create_entry program"    
+    if checker[0] == True:
+        entry, t = create_entry(checker[1])
+        save_entry_to_db(entry, t)
+    else:
+        clear_buffer()
+        entry, t = first_entry()
+        save_entry_to_db(entry, t)
+
+    return 0
+
+def display_month(yrmo):
+    year = int(yrmo[:4])
+    month = int(yrmo[4:])
+    import calendar
+    cal = calendar.month(year, month).split('\n')
+    ical = calendar.Calendar(0)
+    cal_days = []
+
+    for x in ical.itermonthdays(year, month):
+        if x != 0:
+            cal_days.append(str(x))
+
+    the_days = []
+    for x in cal_days:
+        if check_for_entry(yrmo+x) != None:
+            the_days.append(x)
+
+    the_days = string_list(the_days)
+
+    new_cal = []
+    for x in cal:
+        z = x.split(' ')
+        tmp_row = []
+        for xx in z:
+            if xx in the_days:
+                tmp_row.append('\x1b[4m'+xx+'\x1b[0m')
+            else:
+                tmp_row.append(xx)
+        new_cal.append(' '.join(tmp_row))
+
+    return '\n'.join(new_cal)
+
+def string_list(a):
+    q = []
+    for x in a:
+        q.append(str(x))
+    return q
+
+def main(args):
+    date, month = check_for_args(args)
+    if date == None and month == None:
+        no_args()
+    elif month == None:
+        if check_for_entry(date) != None:
+            cont = check_for_entry(date)
+            view_old_entry( cont )
+        else:
+            print "No entries to journal on "+date+"."
+    elif date == None:
+        pretty_mo = display_month(month)
+        print pretty_mo
+    return 0
+
+main(args)
