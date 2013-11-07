@@ -24,17 +24,20 @@ fh.close()
 #fh.write(writ_str)
 #fh.close()
 
-
+apt_depen_lst = ['couchdb','python-setuptools','emacs','python-dev']
 # Installing dependencies
 print "Installing CouchDB..."
-p = subprocess.Popen('sudo apt-get install couchdb python-setuptools emacs',shell=True)
+print "You will be asked to input your password."
+p = subprocess.Popen('sudo apt-get install '+' '.join(apt_depen_lst),shell=True)
 p.communicate()
 
 p = subprocess.Popen('sudo easy_install pip',shell=True)
 p.communicate()
 
+pip_depen_lst = ['couchdbkit','python-dateutil','restkit', 'socketpool']
+
 print "Installing CouchDBKit..."
-p = subprocess.Popen('sudo pip install couchdbkit python-dateutil',shell=True)
+p = subprocess.Popen('sudo pip install '+' '.join(pip_depen_lst),shell=True)
 p.communicate()
 
 
@@ -43,6 +46,9 @@ p.communicate()
 
 print "Copying to /usr/bin/journal"
 p = subprocess.Popen('sudo cp ./journal /usr/bin/journal',shell=True)
+p.communicate()
+
+p = subprocess.Popen('sudo couchdb -b',shell=True)
 p.communicate()
 
 print "To use journal now, simply type 'journal' on the command line."
