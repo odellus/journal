@@ -27,7 +27,8 @@ fh.close()
 
 # Installing dependencies
 print "Installing CouchDB..."
-p = subprocess.Popen('sudo apt-get install couchdb python-setuptools emacs',shell=True)
+p = subprocess.Popen('sudo apt-get install couchdb python-setuptools emacs',
+                     shell=True)
 p.communicate()
 
 p = subprocess.Popen('sudo easy_install pip',shell=True)
