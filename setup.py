@@ -27,13 +27,12 @@ fh.close()
 apt_depen_lst = ['couchdb','python-setuptools','emacs','python-dev']
 # Installing dependencies
 print "Installing CouchDB..."
-<<<<<<< HEAD
 p = subprocess.Popen('sudo apt-get install couchdb python-setuptools emacs',
                      shell=True)
-=======
+p.communicate()
+
 print "You will be asked to input your password."
-p = subprocess.Popen('sudo apt-get install '+' '.join(apt_depen_lst),shell=True)
->>>>>>> e68aa121a12572e596fc1826218fd9954f45718d
+p = subprocess.Popen('sudo apt-get install -y '+' '.join(apt_depen_lst),shell=True)
 p.communicate()
 
 p = subprocess.Popen('sudo easy_install pip',shell=True)
