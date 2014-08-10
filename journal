@@ -215,14 +215,11 @@ def display_month(yrmo):
 
     for x in ical.itermonthdays(year, month):
         if x != 0:
-<<<<<<< HEAD
             cal_days.append(str(x))
             query_days.append(add_zero(str(x)))
             
-=======
             cal_days.append(add_zero(str(x)))
 
->>>>>>> e68aa121a12572e596fc1826218fd9954f45718d
     the_days = []
     for x in query_days:
         if check_for_entry(yrmo+x) != None:
@@ -230,11 +227,6 @@ def display_month(yrmo):
                 the_days.append(x[1])
             else:
                 the_days.append(x)
-<<<<<<< HEAD
-
-=======
-                
->>>>>>> e68aa121a12572e596fc1826218fd9954f45718d
     new_cal = []
     for x in cal:
         z = x.split(' ')
