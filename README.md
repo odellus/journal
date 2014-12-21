@@ -1,8 +1,12 @@
-journal
-=======
+### journal
+[![Gittip](http://img.shields.io/gittip/odellus.png)](https://www.gittip.com/odellus/)
 
-A journal utility for Unix systems written in Python which makes use of emacs for editing and couchdb for data persistence.
+A simple command line journal utility for Ubuntu which uses emacs for editing and couchdb for data storage.
 
-To install simply type "sudo python setup.py" and all dependencies will be installed automatically.
+Installation Instructions for Ubuntu: 
 
-If one wants to get fancy with the header at the top of each entry, simply edit the file JOURNAL_PREHEADER variable in ~/.twsetup_defaults.py
+`sudo python setup.py`
+
+For help:
+
+`journal -h`
