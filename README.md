@@ -1,6 +1,7 @@
 ### journal
-<center><img src="./journal.gif"></center>
 [![Gittip](http://img.shields.io/gittip/odellus.png)](https://www.gittip.com/odellus/)
+<center><img src="./journal.gif"></center>
+
 
 A simple command line journal utility for Ubuntu which uses emacs for editing and couchdb for data storage.
 
